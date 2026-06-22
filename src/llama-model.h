@@ -24,14 +24,12 @@ enum llm_type {
     LLM_TYPE_17M,
     LLM_TYPE_22M,
     LLM_TYPE_33M,
-    LLM_TYPE_47M,
     LLM_TYPE_60M,
     LLM_TYPE_70M,
     LLM_TYPE_80M,
     LLM_TYPE_109M,
     LLM_TYPE_137M,
     LLM_TYPE_140M,
-    LLM_TYPE_149M,
     LLM_TYPE_160M,
     LLM_TYPE_190M,
     LLM_TYPE_220M,
@@ -41,7 +39,6 @@ enum llm_type {
     LLM_TYPE_335M,
     LLM_TYPE_350M,
     LLM_TYPE_360M,
-    LLM_TYPE_395M,
     LLM_TYPE_410M,
     LLM_TYPE_450M,
     LLM_TYPE_475M,
@@ -79,6 +76,7 @@ enum llm_type {
     LLM_TYPE_15B,
     LLM_TYPE_16B,
     LLM_TYPE_20B,
+    LLM_TYPE_22B,
     LLM_TYPE_26B,
     LLM_TYPE_27B,
     LLM_TYPE_30B,
@@ -123,7 +121,6 @@ enum llm_type {
     LLM_TYPE_230B_A10B, // Minimax M2
     LLM_TYPE_235B_A22B,
     LLM_TYPE_300B_A47B, // Ernie MoE big
-    LLM_TYPE_310B_A15B, // /MiMo-V2-Flash
     LLM_TYPE_355B_A32B, // GLM-4.5
     LLM_TYPE_E2B,
     LLM_TYPE_E4B,
@@ -408,6 +405,8 @@ struct llama_layer {
     struct ggml_tensor * ffn_act_alpha_p = nullptr;
     struct ggml_tensor * ffn_act_beta    = nullptr;
     struct ggml_tensor * ffn_act_eps     = nullptr;
+
+    struct ggml_tensor * bskcn_tv = nullptr;
 
     struct llama_layer_posnet posnet;
 

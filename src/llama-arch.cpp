@@ -20,7 +20,6 @@ static const std::map<llm_arch, const char *> LLM_ARCH_NAMES = {
     { LLM_ARCH_STARCODER,        "starcoder"        },
     { LLM_ARCH_REFACT,           "refact"           },
     { LLM_ARCH_BERT,             "bert"             },
-    { LLM_ARCH_MODERN_BERT,      "modern-bert"      },
     { LLM_ARCH_NOMIC_BERT,       "nomic-bert"       },
     { LLM_ARCH_NOMIC_BERT_MOE,   "nomic-bert-moe"   },
     { LLM_ARCH_NEO_BERT,         "neo-bert"         },
@@ -88,6 +87,7 @@ static const std::map<llm_arch, const char *> LLM_ARCH_NAMES = {
     { LLM_ARCH_GRANITE_MOE,      "granitemoe"       },
     { LLM_ARCH_GRANITE_HYBRID,   "granitehybrid"    },
     { LLM_ARCH_CHAMELEON,        "chameleon"        },
+    { LLM_ARCH_SOLAR,            "solar"            },
     { LLM_ARCH_WAVTOKENIZER_DEC, "wavtokenizer-dec" },
     { LLM_ARCH_PLM,              "plm"              },
     { LLM_ARCH_BAILINGMOE,       "bailingmoe"       },
@@ -115,8 +115,6 @@ static const std::map<llm_arch, const char *> LLM_ARCH_NAMES = {
     { LLM_ARCH_RND1,             "rnd1"             },
     { LLM_ARCH_PANGU_EMBED,      "pangu-embedded"   },
     { LLM_ARCH_MISTRAL3,         "mistral3"         },
-    { LLM_ARCH_MIMO2,            "mimo2"           },
-    { LLM_ARCH_LLAMA_EMBED,      "llama-embed"      },
     { LLM_ARCH_UNKNOWN,          "(unknown)"        },
 };
 
@@ -207,18 +205,17 @@ static const std::map<llm_kv, const char *> LLM_KV_NAMES = {
     { LLM_KV_ATTENTION_GATE_LORA_RANK,               "%s.attention.gate_lora_rank"               },
     { LLM_KV_ATTENTION_RELATIVE_BUCKETS_COUNT,       "%s.attention.relative_buckets_count"       },
     { LLM_KV_ATTENTION_SLIDING_WINDOW,               "%s.attention.sliding_window"               },
-    { LLM_KV_ATTENTION_SLIDING_WINDOW_PATTERN,       "%s.attention.sliding_window_pattern"       },
     { LLM_KV_ATTENTION_SCALE,                        "%s.attention.scale"                        },
     { LLM_KV_ATTENTION_OUTPUT_SCALE,                 "%s.attention.output_scale"                 },
     { LLM_KV_ATTENTION_TEMPERATURE_LENGTH,           "%s.attention.temperature_length"           },
     { LLM_KV_ATTENTION_TEMPERATURE_SCALE,            "%s.attention.temperature_scale"            },
+    { LLM_KV_ATTENTION_BLOCK_SKIP_CONNECTION,        "%s.attention.block_skip_connection"        },
     { LLM_KV_ATTENTION_KEY_LENGTH_MLA,               "%s.attention.key_length_mla"               },
     { LLM_KV_ATTENTION_VALUE_LENGTH_MLA,             "%s.attention.value_length_mla"             },
 
     { LLM_KV_ROPE_DIMENSION_COUNT,          "%s.rope.dimension_count"                 },
     { LLM_KV_ROPE_DIMENSION_SECTIONS,       "%s.rope.dimension_sections"              },
     { LLM_KV_ROPE_FREQ_BASE,                "%s.rope.freq_base"                       },
-    { LLM_KV_ROPE_FREQ_BASE_SWA,            "%s.rope.freq_base_swa"                   },
     { LLM_KV_ROPE_SCALE_LINEAR,             "%s.rope.scale_linear"                    },
     { LLM_KV_ROPE_SCALING_TYPE,             "%s.rope.scaling.type"                    },
     { LLM_KV_ROPE_SCALING_FACTOR,           "%s.rope.scaling.factor"                  },
@@ -344,6 +341,7 @@ static const std::map<llm_tensor, const char *> LLM_TENSOR_NAMES = {
     { LLM_TENSOR_ATTN_QKV,                               "blk.%d.attn_qkv" },
     { LLM_TENSOR_LAYER_OUT_NORM,                         "blk.%d.layer_output_norm" },
     { LLM_TENSOR_ATTN_OUT_NORM,                          "blk.%d.attn_output_norm" },
+    { LLM_TENSOR_BSKCN_TV,                               "bskcn_tv" },
     { LLM_TENSOR_POS_EMBD,                               "position_embd" },
     { LLM_TENSOR_FFN_ACT,                                "blk.%d.ffn.act" },
     { LLM_TENSOR_TOKEN_EMBD_NORM,                        "token_embd_norm" },
@@ -502,7 +500,6 @@ static std::set<llm_tensor> llm_get_tensor_names(llm_arch arch) {
         case LLM_ARCH_LLAMA:
         case LLM_ARCH_DECI:
         case LLM_ARCH_MISTRAL3:
-        case LLM_ARCH_LLAMA_EMBED:
             return {
                 LLM_TENSOR_TOKEN_EMBD,
                 LLM_TENSOR_OUTPUT_NORM,
@@ -781,20 +778,6 @@ static std::set<llm_tensor> llm_get_tensor_names(llm_arch arch) {
                 LLM_TENSOR_FFN_DOWN,
                 LLM_TENSOR_FFN_UP,
                 LLM_TENSOR_ENC_OUTPUT_NORM,
-                LLM_TENSOR_CLS,
-                LLM_TENSOR_CLS_OUT,
-            };
-        case LLM_ARCH_MODERN_BERT:
-            return {
-                LLM_TENSOR_TOKEN_EMBD,
-                LLM_TENSOR_TOKEN_EMBD_NORM,
-                LLM_TENSOR_OUTPUT_NORM,
-                LLM_TENSOR_ATTN_NORM,
-                LLM_TENSOR_ATTN_OUT,
-                LLM_TENSOR_ATTN_QKV,
-                LLM_TENSOR_FFN_DOWN,
-                LLM_TENSOR_FFN_UP,
-                LLM_TENSOR_FFN_NORM,
                 LLM_TENSOR_CLS,
                 LLM_TENSOR_CLS_OUT,
             };
@@ -2075,7 +2058,7 @@ static std::set<llm_tensor> llm_get_tensor_names(llm_arch arch) {
                 LLM_TENSOR_SHORTCONV_INPROJ,
                 LLM_TENSOR_SHORTCONV_OUTPROJ,
                 LLM_TENSOR_TOKEN_EMBD,
-                LLM_TENSOR_OUTPUT_NORM_LFM2,
+                LLM_TENSOR_OUTPUT_NORM,
                 LLM_TENSOR_FFN_GATE_INP,
                 LLM_TENSOR_FFN_GATE_EXPS,
                 LLM_TENSOR_FFN_DOWN_EXPS,
@@ -2191,7 +2174,12 @@ static std::set<llm_tensor> llm_get_tensor_names(llm_arch arch) {
                 LLM_TENSOR_VISEXP_FFN_DOWN,
                 LLM_TENSOR_VISEXP_FFN_UP,
             };
-        case LLM_ARCH_MIMO2:
+        case LLM_ARCH_GPTJ:
+        case LLM_ARCH_UNKNOWN:
+            return {
+                LLM_TENSOR_TOKEN_EMBD,
+            };
+        case LLM_ARCH_SOLAR:
             return {
                 LLM_TENSOR_TOKEN_EMBD,
                 LLM_TENSOR_OUTPUT_NORM,
@@ -2200,22 +2188,12 @@ static std::set<llm_tensor> llm_get_tensor_names(llm_arch arch) {
                 LLM_TENSOR_ATTN_Q,
                 LLM_TENSOR_ATTN_K,
                 LLM_TENSOR_ATTN_V,
-                LLM_TENSOR_ATTN_SINKS,
                 LLM_TENSOR_ATTN_OUT,
                 LLM_TENSOR_FFN_NORM,
                 LLM_TENSOR_FFN_GATE,
                 LLM_TENSOR_FFN_DOWN,
                 LLM_TENSOR_FFN_UP,
-                LLM_TENSOR_FFN_GATE_INP,
-                LLM_TENSOR_FFN_GATE_EXPS,
-                LLM_TENSOR_FFN_DOWN_EXPS,
-                LLM_TENSOR_FFN_UP_EXPS,
-                LLM_TENSOR_FFN_EXP_PROBS_B,
-            };
-        case LLM_ARCH_GPTJ:
-        case LLM_ARCH_UNKNOWN:
-            return {
-                LLM_TENSOR_TOKEN_EMBD,
+                LLM_TENSOR_BSKCN_TV,
             };
         default:
             GGML_ABORT("unknown architecture for tensor mapping");
@@ -2385,6 +2363,7 @@ static const std::map<llm_tensor, llm_tensor_info> LLM_TENSOR_INFOS = {
     {LLM_TENSOR_LAUREL_POST_NORM,           {LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL}},
     // this tensor is loaded for T5, but never used
     {LLM_TENSOR_DEC_CROSS_ATTN_REL_B,       {LLM_TENSOR_LAYER_REPEATING, GGML_OP_NONE}},
+    {LLM_TENSOR_BSKCN_TV,                   {LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL}},
     {LLM_TENSOR_CONV1D,                     {LLM_TENSOR_LAYER_INPUT,     GGML_OP_IM2COL}},
     {LLM_TENSOR_POS_NET_NORM,               {LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL}},
     {LLM_TENSOR_POS_NET_NORM1,              {LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL}},

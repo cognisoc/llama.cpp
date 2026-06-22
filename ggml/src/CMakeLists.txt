@@ -205,6 +205,9 @@ add_library(ggml-base
             ggml-threading.h
             ggml-quants.c
             ggml-quants.h
+            mem_hip.cpp
+            mem_nvml.cpp
+            mem_dxgi_pdh.cpp
             gguf.cpp)
 
 set_target_properties(ggml-base PROPERTIES
@@ -345,6 +348,7 @@ function(ggml_add_cpu_backend_variant tag_name)
     endif()
 
     ggml_add_cpu_backend_variant_impl(${tag_name})
+    add_dependencies(ggml-cpu ggml-cpu-${tag_name})
 endfunction()
 
 ggml_add_backend(CPU)
@@ -355,6 +359,7 @@ if (GGML_CPU_ALL_VARIANTS)
     elseif (GGML_CPU_ARM_ARCH)
         message(FATAL_ERROR "Cannot use both GGML_CPU_ARM_ARCH and GGML_CPU_ALL_VARIANTS")
     endif()
+    add_custom_target(ggml-cpu)
     if (GGML_SYSTEM_ARCH STREQUAL "x86")
         ggml_add_cpu_backend_variant(x64)
         ggml_add_cpu_backend_variant(sse42        SSE42)
@@ -363,10 +368,6 @@ if (GGML_CPU_ALL_VARIANTS)
         ggml_add_cpu_backend_variant(skylakex     SSE42 AVX F16C AVX2 BMI2 FMA AVX512)
         ggml_add_cpu_backend_variant(icelake      SSE42 AVX F16C AVX2 BMI2 FMA AVX512 AVX512_VBMI AVX512_VNNI)
         ggml_add_cpu_backend_variant(alderlake    SSE42 AVX F16C AVX2 BMI2 FMA AVX_VNNI)
-        if (NOT MSVC)
-            # MSVC doesn't support AMX
-            ggml_add_cpu_backend_variant(sapphirerapids SSE42 AVX F16C AVX2 BMI2 FMA AVX512 AVX512_VBMI AVX512_VNNI AVX512_BF16 AMX_TILE AMX_INT8)
-        endif()
     elseif(GGML_SYSTEM_ARCH STREQUAL "ARM")
         if (CMAKE_SYSTEM_NAME MATCHES "Linux")
             # Many of these features are optional so we build versions with popular
@@ -386,9 +387,6 @@ if (GGML_CPU_ALL_VARIANTS)
             ggml_add_cpu_backend_variant(android_armv8.2_1    DOTPROD)
             ggml_add_cpu_backend_variant(android_armv8.2_2    DOTPROD FP16_VECTOR_ARITHMETIC)
             ggml_add_cpu_backend_variant(android_armv8.6_1    DOTPROD FP16_VECTOR_ARITHMETIC MATMUL_INT8)
-            ggml_add_cpu_backend_variant(android_armv9.0_1    DOTPROD MATMUL_INT8 FP16_VECTOR_ARITHMETIC SVE2)
-            ggml_add_cpu_backend_variant(android_armv9.2_1    DOTPROD MATMUL_INT8 FP16_VECTOR_ARITHMETIC SME)
-            ggml_add_cpu_backend_variant(android_armv9.2_2    DOTPROD MATMUL_INT8 FP16_VECTOR_ARITHMETIC SVE SME)
         elseif (APPLE)
             ggml_add_cpu_backend_variant(apple_m1             DOTPROD)
             ggml_add_cpu_backend_variant(apple_m2_m3          DOTPROD MATMUL_INT8)

@@ -88,10 +88,8 @@ add_library(llama
             models/llama-iswa.cpp
             models/llama.cpp
             models/mamba.cpp
-            models/mimo2-iswa.cpp
             models/minicpm3.cpp
             models/minimax-m2.cpp
-            models/modern-bert.cpp
             models/mpt.cpp
             models/nemotron-h.cpp
             models/nemotron.cpp
@@ -127,6 +125,7 @@ add_library(llama
             models/seed-oss.cpp
             models/smallthinker.cpp
             models/smollm3.cpp
+            models/solar.cpp
             models/stablelm.cpp
             models/starcoder.cpp
             models/starcoder2.cpp

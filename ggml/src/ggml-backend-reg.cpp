@@ -126,6 +126,18 @@ static dl_handle * dl_load_library(const fs::path & path) {
     SetErrorMode(old_mode | SEM_FAILCRITICALERRORS);
 
     HMODULE handle = LoadLibraryW(path.wstring().c_str());
+    if (!handle) {
+        DWORD error_code = GetLastError();
+        std::string msg;
+        LPSTR lpMsgBuf = NULL;
+        DWORD bufLen = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                      NULL, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&lpMsgBuf, 0, NULL);
+        if (bufLen) {
+            msg = lpMsgBuf;
+            LocalFree(lpMsgBuf);
+            GGML_LOG_INFO("%s unable to load library %s: %s\n", __func__, path_str(path).c_str(), msg.c_str());
+        }
+    }
 
     SetErrorMode(old_mode);
 
@@ -183,7 +195,7 @@ struct ggml_backend_reg_entry {
 
 struct ggml_backend_registry {
     std::vector<ggml_backend_reg_entry> backends;
-    std::vector<ggml_backend_dev_t> devices;
+    std::vector<std::pair<ggml_backend_dev_t, int>> devices;
 
     ggml_backend_registry() {
 #ifdef GGML_USE_CUDA
@@ -237,7 +249,7 @@ struct ggml_backend_registry {
         }
     }
 
-    void register_backend(ggml_backend_reg_t reg, dl_handle_ptr handle = nullptr) {
+    void register_backend(ggml_backend_reg_t reg, int score = -1, dl_handle_ptr handle = nullptr) {
         if (!reg) {
             return;
         }
@@ -248,15 +260,20 @@ struct ggml_backend_registry {
 #endif
         backends.push_back({ reg, std::move(handle) });
         for (size_t i = 0; i < ggml_backend_reg_dev_count(reg); i++) {
-            register_device(ggml_backend_reg_dev_get(reg, i));
+            register_device(ggml_backend_reg_dev_get(reg, i), score);
         }
     }
 
-    void register_device(ggml_backend_dev_t device) {
+    void register_device(ggml_backend_dev_t device, int score = -1) {
 #ifndef NDEBUG
         GGML_LOG_DEBUG("%s: registered device %s (%s)\n", __func__, ggml_backend_dev_name(device), ggml_backend_dev_description(device));
 #endif
-        devices.push_back(device);
+        devices.push_back({device, score});
+        std::stable_sort(devices.begin(), devices.end(),
+            [](const auto & a, const auto & b) {
+                return a.second > b.second;
+            }
+        );
     }
 
     ggml_backend_reg_t load_backend(const fs::path & path, bool silent) {
@@ -300,7 +317,7 @@ struct ggml_backend_registry {
 
         GGML_LOG_INFO("%s: loaded %s backend from %s\n", __func__, ggml_backend_reg_name(reg), path_str(path).c_str());
 
-        register_backend(reg, std::move(handle));
+        register_backend(reg, score_fn ? score_fn() : -1, std::move(handle));
 
         return reg;
     }
@@ -323,7 +340,7 @@ struct ggml_backend_registry {
         // remove devices
         devices.erase(
             std::remove_if(devices.begin(), devices.end(),
-                            [reg](ggml_backend_dev_t dev) { return ggml_backend_dev_backend_reg(dev) == reg; }),
+                            [reg](std::pair<ggml_backend_dev_t, int> dev) { return ggml_backend_dev_backend_reg(dev.first) == reg; }),
             devices.end());
 
         // remove backend
@@ -381,7 +398,7 @@ size_t ggml_backend_dev_count() {
 
 ggml_backend_dev_t ggml_backend_dev_get(size_t index) {
     GGML_ASSERT(index < ggml_backend_dev_count());
-    return get_reg().devices[index];
+    return get_reg().devices[index].first;
 }
 
 ggml_backend_dev_t ggml_backend_dev_by_name(const char * name) {
