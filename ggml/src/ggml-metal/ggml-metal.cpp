@@ -417,8 +417,10 @@ static bool ggml_backend_metal_cpy_tensor_async(ggml_backend_t backend_src, ggml
     GGML_UNUSED(dst);
 }
 
-static enum ggml_status ggml_backend_metal_graph_compute(ggml_backend_t backend, ggml_cgraph * cgraph) {
+static enum ggml_status ggml_backend_metal_graph_compute(ggml_backend_t backend, ggml_cgraph * cgraph, int batch_size) {
     ggml_metal_t ctx = (ggml_metal_t)backend->context;
+
+    GGML_UNUSED(batch_size); // Metal's queued command buffers schedule parallelism internally; hint is informational.
 
     return ggml_metal_graph_compute(ctx, cgraph);
 }
